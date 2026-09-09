@@ -2,48 +2,101 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Offline Hybrid Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid AI Assistant - Auth & Chat</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #1e1e2e; color: white; text-align: center; padding-top: 50px; }
-        .card { background: #2e2e3e; display: inline-block; padding: 30px; border-radius: 12px; width: 350px; }
-        input { width: 80%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: none; }
-        button { padding: 10px 15px; border-radius: 5px; border: none; background: #00adb5; color: white; cursor: pointer; }
-        #output { margin-top: 20px; font-weight: bold; color: #00fff5; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: #1e293b; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        h2 { text-align: center; color: #38bdf8; margin-top: 0; }
+        input { width: 100%; padding: 12px; margin: 8px 0 16px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
+        button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-bottom: 8px; }
+        button:hover { background: #0369a1; }
+        .alt-btn { background: #334155; }
+        .alt-btn:hover { background: #475569; }
+        #authSection, #chatSection { display: block; }
+        #chatSection { display: none; }
+        #output { margin-top: 15px; padding: 12px; background: #0f172a; border-radius: 6px; border-left: 4px solid #38bdf8; word-wrap: break-word; }
+        .status { margin-top: 10px; font-size: 0.9em; text-align: center; color: #f43f5e; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>Hybrid Voice/Text Assistant</h2>
-        <input type="text" id="userInput" placeholder="Type or say a command...">
-        <br>
-        <button onclick="sendCommand()">Send Command</button>
-        <button onclick="startVoice()">🎤 Speak</button>
-        <div id="output"></div>
+        <h2>Hybrid AI Assistant</h2>
+        
+        <!-- Auth Section -->
+        <div id="authSection">
+            <input type="email" id="email" placeholder="Enter Email" required>
+            <input type="password" id="password" placeholder="Enter Password" required>
+            <button onclick="handleAuth('/login')">Login</button>
+            <button class="alt-btn" onclick="handleAuth('/register')">Register New Account</button>
+            <div id="authStatus" class="status"></div>
+        </div>
+
+        <!-- AI Assistant Chat Section -->
+        <div id="chatSection">
+            <p style="color: #4ade80;">Authenticated Successfully!</p>
+            <input type="text" id="userInput" placeholder="Ask Groq AI anything...">
+            <button onclick="sendPrompt()">Send Prompt</button>
+            <div id="output">AI Response will appear here...</div>
+        </div>
     </div>
 
     <script>
-        async function sendCommand() {
-            let input = document.getElementById("userInput").value;
-            let responseDiv = document.getElementById("output");
-            responseDiv.innerText = "Processing...";
+        let authToken = "";
 
-            let res = await fetch("/process", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ command: input })
-            });
-            let data = await res.json();
-            responseDiv.innerText = data.response;
+        async function handleAuth(endpoint) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('authStatus');
+
+            if(!email || !password) {
+                statusDiv.innerText = "Please enter both email and password.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('password', password);
+
+            try {
+                const response = await fetch(endpoint, { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if(response.ok) {
+                    if(endpoint === '/login') {
+                        authToken = result.access_token;
+                        document.getElementById('authSection').style.display = 'none';
+                        document.getElementById('chatSection').style.display = 'block';
+                    } else {
+                        statusDiv.style.color = '#4ade80';
+                        statusDiv.innerText = result.message;
+                    }
+                } else {
+                    statusDiv.style.color = '#f43f5e';
+                    statusDiv.innerText = result.detail || "Error occurred";
+                }
+            } catch(e) {
+                statusDiv.innerText = "Connection failed.";
+            }
         }
 
-        // Web Speech API for Local Voice Recognition
-        function startVoice() {
-            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.onresult = function(event) {
-                document.getElementById("userInput").value = event.results[0][0].transcript;
-                sendCommand();
-            };
-            recognition.start();
+        async function sendPrompt() {
+            const prompt = document.getElementById('userInput').value;
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerText = "Thinking...";
+
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+                const result = await response.json();
+                outputDiv.innerText = result.response;
+            } catch(e) {
+                outputDiv.innerText = "Error connecting to AI backend.";
+            }
         }
     </script>
 </body>

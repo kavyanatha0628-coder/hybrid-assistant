@@ -2,3 +2,6 @@ fastapi
 uvicorn
 jinja2
 groq
+passlib[bcrypt]
+pyjwt
+python-multipart
